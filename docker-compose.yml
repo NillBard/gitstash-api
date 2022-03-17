@@ -1,0 +1,20 @@
+services:
+  gitolite-setup:
+    image: jgiannuzzi/gitolite
+    volumes:
+      - gitolite-sshkeys:/etc/ssh/keys
+      - gitolite-git:/var/lib/git
+    command: "true"
+  gitolite:
+    depends_on:
+      - gitolite-setup
+    image: jgiannuzzi/gitolite
+    volumes:
+      - gitolite-sshkeys:/etc/ssh/keys
+      - gitolite-git:/var/lib/git
+    ports:
+      - 22:22
+
+volumes:
+  gitolite-sshkeys: {}
+  gitolite-git: {}
