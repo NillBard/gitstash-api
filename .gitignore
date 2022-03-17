@@ -2,3 +2,4 @@
 .env
 gitolite-admin
 venv
+__pycache__
