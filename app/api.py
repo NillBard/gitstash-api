@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 import jwt
 import bcrypt
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from . import models, schemas
@@ -36,7 +36,10 @@ def gen_token(payload, exp):
 
 
 @app.post('/sign-up', response_model=schemas.JWT)
-def sign_up(user: schemas.UserSignUp, db: Session = Depends(get_db)):
+def sign_up(
+        user: schemas.UserSignUp,
+        response: Response,
+        db: Session = Depends(get_db)):
     db_user = db.query(
         models.User).filter(
         models.User.email == user.email).first()
@@ -60,11 +63,16 @@ def sign_up(user: schemas.UserSignUp, db: Session = Depends(get_db)):
         {'id': db_user.id}, timedelta(minutes=30))
     refresh_token = gen_token({'id': db_user.id}, timedelta(days=30))
 
+    response.set_cookie(key='refreshToken', value=refresh_token)
+
     return {'accessToken': access_token, 'refreshToken': refresh_token}
 
 
 @app.post('/login', response_model=schemas.JWT)
-def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+def login(
+        user: schemas.UserLogin,
+        response: Response,
+        db: Session = Depends(get_db)):
     db_user = db.query(
         models.User).filter(
         models.User.email == user.email).first()
@@ -76,6 +84,8 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
         access_token = gen_token(
             {'id': db_user.id}, timedelta(minutes=30))
         refresh_token = gen_token({'id': db_user.id}, timedelta(days=30))
+
+        response.set_cookie(key='refreshToken', value=refresh_token)
 
         return {'accessToken': access_token, 'refreshToken': refresh_token}
 
