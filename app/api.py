@@ -1,8 +1,8 @@
 import os
-import hashlib
 from datetime import datetime, timedelta
 
 import jwt
+import bcrypt
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -44,13 +44,13 @@ def sign_up(user: schemas.UserSignUp, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail='Email already registered')
 
-    salt = os.urandom(32)
-    hashed_password = hashlib.pbkdf2_hmac(
-        'sha256', user.password.encode('utf-8'), salt, 100000)
+    hashed_password = bcrypt.hashpw(
+        user.password.encode(),
+        bcrypt.gensalt())
     db_user = models.User(
         email=user.email,
         name=user.name,
-        password=hashed_password)
+        password=hashed_password.decode('utf-8'))
 
     db.add(db_user)
     db.commit()
@@ -61,3 +61,22 @@ def sign_up(user: schemas.UserSignUp, db: Session = Depends(get_db)):
     refresh_token = gen_token({'id': db_user.id}, timedelta(days=30))
 
     return {'accessToken': access_token, 'refreshToken': refresh_token}
+
+
+@app.post('/login', response_model=schemas.JWT)
+def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(
+        models.User).filter(
+        models.User.email == user.email).first()
+
+    if db_user is None:
+        raise HTTPException(status_code=400, detail='User doesn\'t exist')
+
+    if bcrypt.checkpw(user.password.encode(), db_user.password.encode()):
+        access_token = gen_token(
+            {'id': db_user.id}, timedelta(minutes=30))
+        refresh_token = gen_token({'id': db_user.id}, timedelta(days=30))
+
+        return {'accessToken': access_token, 'refreshToken': refresh_token}
+
+    raise HTTPException(status_code=401, detail='Wrong password')
