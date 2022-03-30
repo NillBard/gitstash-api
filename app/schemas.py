@@ -13,3 +13,7 @@ class UserSignUp(UserLogin):
 class JWT(BaseModel):
     accessToken: str
     refreshToken: str
+
+
+class RefreshToken(BaseModel):
+    refreshToken: str
